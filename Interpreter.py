@@ -2,11 +2,11 @@
 #
 # EOF (end-of-file) token is used to indicate that
 # there is no more input left for lexical analysis
-INTEGER, PLUS, EOF = 'INTEGER', 'PLUS', 'EOF'
+INTEGER, PLUS, MINUS, EOF = 'INTEGER', 'PLUS', 'MINUS', 'EOF'
 
 class Token(object):
     def __init__(self, type, value=None):
-        # token type: INTEGER, PLUS, or EOF
+        # token type: INTEGER, PLUS, MINUS, or EOF
         self.type = type
         # token value: 0, 1, 2. 3, 4, 5, 6, 7, 8, 9, '+', or None
         self.value = value
@@ -54,6 +54,10 @@ class Interpreter(object):
             self.pos += 1
             return Token(PLUS, current_char)
 
+        elif current_char == "-":
+            self.pos += 1
+            return Token(MINUS, current_char)
+
         else:
             self.error()
 
@@ -73,9 +77,8 @@ class Interpreter(object):
         left = self.current_token
         self.match(INTEGER)
 
-        # we expect the current token to be a '+' token
-        op = self.current_token
-        self.match(PLUS)
+        # we expect the current token to be a '+' or '-' token
+        op = self.operation()
 
         # we expect the current token to be a single-digit integer
         right = self.current_token
@@ -87,8 +90,22 @@ class Interpreter(object):
         # has been successfully found and the method can just
         # return the result of adding two integers, thus
         # effectively interpreting client input
-        result = left.value + right.value
+        result = 0
+        if op == PLUS:
+            result = left.value + right.value
+        elif op == MINUS:
+            result = left.value - right.value
         return result
+
+    def operation(self):
+        if self.current_token.value == "+":
+            self.match(PLUS)
+            return PLUS
+        else:
+            self.match(MINUS)
+            return MINUS
+
+
 
 def main():
     while True:
