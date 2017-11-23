@@ -57,6 +57,9 @@ class Interpreter(object):
         elif current_char == "-":
             self.pos += 1
             return Token(MINUS, current_char)
+        elif current_char == " ":
+            self.pos += 1
+            return self.get_next_token()
 
         else:
             self.error()
@@ -114,7 +117,7 @@ def main():
         except EOFError:
             break
         if not terminal:
-            print("Accpeted Format:[0..9]+[0..9]")
+            print("Accpeted Format:[0..9][+,-][0..9]")
             continue
 
         pickle = Interpreter(terminal)
