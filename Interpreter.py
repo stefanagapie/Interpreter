@@ -1,3 +1,14 @@
+class BCOLORS:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
+
 # Token types
 #
 # EOF (end-of-file) token is used to indicate that
@@ -26,6 +37,11 @@ class Interpreter(object):
         # current token instance
         self.current_token = None
         self.current_char = self.text[self.pos]
+
+
+    ##########################################################
+    # Lexer code                                             #
+    ##########################################################
 
     def error(self):
         print(self.current_token,self.current_char)
@@ -72,41 +88,38 @@ class Interpreter(object):
 
         return Token(EOF)
 
+
+    ##########################################################
+    # Parser / Interpreter code                              #
+    ##########################################################
+
     def match(self, token_type):
         if self.current_token.type == token_type:
             self.current_token = self.get_next_token()
         else:
             self.error()
 
-    def expression(self):
-        # expression -> integer + integer
-        # expression -> integer - integer
+    def term(self):
+        token = self.current_token
+        self.match(INTEGER)
+        return token.value
 
-        # set current token to the first token taken from the input
+    def expression(self):
+
         self.current_token = self.get_next_token()
 
-        # we expect the current token to be a single-digit integer
-        left = self.current_token
-        self.match(INTEGER)
+        result = self.term()
 
-        # we expect the current token to be a '+' or '-' token
-        op = self.operation()
+        while self.current_token.type in (PLUS, MINUS):
 
-        # we expect the current token to be a single-digit integer
-        right = self.current_token
-        self.match(INTEGER)
-        # after the above call the self.current_token is set to
-        # EOF token
+            token = self.current_token
+            if token.type == PLUS:
+                self.match(PLUS)
+                result = result + self.term()
+            elif token.type == MINUS:
+                self.match(MINUS)
+                result = result - self.term()
 
-        # at this point INTEGER PLUS INTEGER sequence of tokens
-        # has been successfully found and the method can just
-        # return the result of adding two integers, thus
-        # effectively interpreting client input
-        result = 0
-        if op == PLUS:
-            result = left.value + right.value
-        elif op == MINUS:
-            result = left.value - right.value
         return result
 
     def operation(self):
@@ -136,16 +149,28 @@ def test_driver():
         {program: "11 + 22",expected: "33"},
         {program: "22 + 1", expected: "23"},
         {program: "1 + 22", expected: "23"},
+        {program: "1 + 2 + 3", expected: "6"},
+        {program: "11 + 2 + 30", expected: "43"},
+        {program: "11 + 2 + 30 + 4", expected: "47"},
+        {program: "11 - 2 + 30 - 4", expected: "35"},
+        {program: "11-2+30-4", expected: "35"},
     ]
 
+    failed_tests = 0
+    passed_tests = 0
+    print(BCOLORS.OKBLUE, "\n:: BEGIN TESTS ::\n", BCOLORS.ENDC)
     for program_pkg in programs:
         pickle = Interpreter(program_pkg[program])
         result = pickle.expression()
         if str(result) != str(program_pkg[expected]):
-            print("Test: <Failed>",program_pkg)
+            print(BCOLORS.FAIL, "Test: <Failed>", program_pkg, "Actual:",result, BCOLORS.ENDC)
+            failed_tests += 1
         else:
-            print("Test: <Passed>",program_pkg[program],"=",result)
+            print(BCOLORS.OKGREEN, "Test: <Passed>", program_pkg[program], "=", result, BCOLORS.ENDC)
+            passed_tests += 1
 
+    print(BCOLORS.HEADER, "\n\tSTATISTICS: Failed = "+str(failed_tests)+", Passed = "+str(passed_tests), BCOLORS.ENDC)
+    print(BCOLORS.OKBLUE, "\n:: END TESTS ::", BCOLORS.ENDC)
 
 def main():
 
