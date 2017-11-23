@@ -118,8 +118,40 @@ class Interpreter(object):
             return MINUS
 
 
+def test_driver():
+    program = "program"
+    expected = "expected"
+    programs = [
+        {program: "5 +7",   expected: "12"},
+        {program: "7- 5",   expected: "2"},
+        {program: "5+7",    expected: "12"},
+        {program: "7-5",    expected: "2"},
+        {program: "5 + 7",  expected: "12"},
+        {program: "7 - 5",  expected: "2"},
+        {program: "27+11",  expected: "38"},
+        {program: "11+22",  expected: "33"},
+        {program: "27+ 11", expected: "38"},
+        {program: "11 +22", expected: "33"},
+        {program: "27 + 11",expected: "38"},
+        {program: "11 + 22",expected: "33"},
+        {program: "22 + 1", expected: "23"},
+        {program: "1 + 22", expected: "23"},
+    ]
+
+    for program_pkg in programs:
+        pickle = Interpreter(program_pkg[program])
+        result = pickle.expression()
+        if str(result) != str(program_pkg[expected]):
+            print("Test: <Failed>",program_pkg)
+        else:
+            print("Test: <Passed>",program_pkg[program],"=",result)
+
 
 def main():
+
+    test_driver()
+    return
+
     while True:
         try:
             terminal = input('uNiCoRn> ')
@@ -135,7 +167,6 @@ def main():
 
 if __name__ == '__main__':
     main()
-
 
 # Machine = Interpreter("3+6")
 #
