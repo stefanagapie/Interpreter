@@ -132,6 +132,9 @@ class Interpreter(object):
             self.match(')')
             return result
 
+        else:
+            self.error()
+
     def term(self):
 
         result = self.factor()
