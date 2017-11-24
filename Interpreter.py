@@ -13,7 +13,7 @@ class BCOLORS:
 #
 # EOF (end-of-file) token is used to indicate that
 # there is no more input left for lexical analysis
-INTEGER, PLUS, MINUS, MUL, DIV, EOF = 'INTEGER', 'PLUS', 'MINUS', 'MUL', 'DIV', 'EOF'
+INTEGER, PLUS, MINUS, MUL, DIV, LPAREN, RPAREN, EOF = ('INTEGER', 'PLUS', 'MINUS', 'MUL', 'DIV', '(', ')', 'EOF')
 
 class Token(object):
     def __init__(self, type, value=None):
@@ -60,7 +60,6 @@ class Lexer(object):
         return int(result)
 
     def get_next_token(self):
-
         while self.current_char is not None:
 
             if self.current_char.isspace():
@@ -84,6 +83,14 @@ class Lexer(object):
             elif self.current_char == "/":
                 self.advance()
                 return Token(DIV, "/")
+
+            elif self.current_char == "(":
+                self.advance()
+                return Token(LPAREN, "(")
+
+            elif self.current_char == ")":
+                self.advance()
+                return Token(RPAREN, ")")
 
             else:
                 self.error()
@@ -115,8 +122,15 @@ class Interpreter(object):
     def factor(self):
 
         token = self.current_token
-        self.match(INTEGER)
-        return token.value
+        if token.type == INTEGER:
+            self.match(INTEGER)
+            return token.value
+
+        elif token.type == LPAREN:
+            self.match('(')
+            result = self.expression()
+            self.match(')')
+            return result
 
     def term(self):
 
@@ -191,6 +205,12 @@ def test_driver():
         {program: "14 + 2 * 3 - 6 / 2",     expected: "17"},
         {program: "2 + 7 * 4",              expected: "30"},
         {program: "7 - 8 / 4",              expected: "5"},
+        {program: "(14 + 2) * (9 - 3) / 3", expected: "32"},
+        {program: "(2 + 7) * 4",            expected: "36"},
+        {program: "(1 - 9) / 4",            expected: "-2"},
+        {program: "7 + 3 * (10 / (12 / (3 + 1) - 1))",  expected: "22"},
+        {program: "7 + (((3 + 2)))",                    expected: "12"},
+        {program: "7 + 3 * (10 / (12 / (3 + 1) - 1)) / (2 + 3) - 5 - 3 + (8)", expected: "10"},
     ]
 
     failed_tests = 0
