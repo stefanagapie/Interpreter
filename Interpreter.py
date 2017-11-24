@@ -17,9 +17,9 @@ INTEGER, PLUS, MINUS, MUL, DIV, EOF = 'INTEGER', 'PLUS', 'MINUS', 'MUL', 'DIV', 
 
 class Token(object):
     def __init__(self, type, value=None):
-        # token type: INTEGER, PLUS, MINUS, or EOF
+        # token type: INTEGER, PLUS, MINUS, MUL, DIV, or EOF
         self.type = type
-        # token value: 0, 1, 2. 3, 4, 5, 6, 7, 8, 9, '+', or None
+        # token value: non-negative integer value, '+', '-', '*', '/', or None
         self.value = value
 
     def __str__(self):
@@ -27,58 +27,6 @@ class Token(object):
 
     def __repr__(self):
         return self.__str__()
-
-class Interpreter(object):
-
-    def __init__(self, lexer):
-        self.lexer = lexer
-        # current token instance
-        self.current_token = self.lexer.get_next_token()
-
-    def run(self):
-        return self.expression()
-
-    ##########################################################
-    # Lexer code                                             #
-    ##########################################################
-
-    ##########################################################
-    # Parser / Interpreter code                              #
-    ##########################################################
-
-    def match(self, token_type):
-
-        if self.current_token.type == token_type:
-            self.current_token = self.lexer.get_next_token()
-        else:
-            self.error()
-
-    def factor(self):
-
-        token = self.current_token
-        self.match(INTEGER)
-        return token.value
-
-    def expression(self):
-
-        result = self.factor()
-
-        while self.current_token.type in (MUL, DIV):
-            token = self.current_token
-
-            if token.type == MUL:
-                self.match(MUL)
-                result = result * self.factor()
-
-            elif token.type == DIV:
-                self.match(DIV)
-                result = result / self.factor()
-
-            else:
-                self.error()
-                break
-
-        return result
 
 
 class Lexer(object):
@@ -142,10 +90,82 @@ class Lexer(object):
 
         return Token(EOF)
 
+
+class Interpreter(object):
+
+    def __init__(self, lexer):
+        self.lexer = lexer
+        # current token instance
+        self.current_token = self.lexer.get_next_token()
+
+    def run(self):
+        return self.expression()
+
+    ##########################################################
+    # Parser / Interpreter code                              #
+    ##########################################################
+
+    def match(self, token_type):
+
+        if self.current_token.type == token_type:
+            self.current_token = self.lexer.get_next_token()
+        else:
+            self.error()
+
+    def factor(self):
+
+        token = self.current_token
+        self.match(INTEGER)
+        return token.value
+
+    def term(self):
+
+        result = self.factor()
+
+        while self.current_token.type in (MUL, DIV):
+            token = self.current_token
+
+            if token.type == MUL:
+                self.match(MUL)
+                result = result * self.factor()
+
+            elif token.type == DIV:
+                self.match(DIV)
+                result = result / self.factor()
+
+            else:
+                self.error()
+                break
+
+        return result
+
+    def expression(self):
+
+        result = self.term()
+
+        while self.current_token.type in (PLUS, MINUS):
+            token = self.current_token
+
+            if token.type == PLUS:
+                self.match(PLUS)
+                result = result + self.term()
+
+            elif token.type == MINUS:
+                self.match(MINUS)
+                result = result - self.term()
+
+            else:
+                self.error()
+                break
+
+        return result
+
+
 def test_driver():
     program = "program"
     expected = "expected"
     programs = [
+        {program: "3",  expected: "3"},
         {program: "5 +7",   expected: "12"},
         {program: "7- 5",   expected: "2"},
         {program: "5+7",    expected: "12"},
@@ -164,10 +184,13 @@ def test_driver():
         {program: "11 + 2 + 30",    expected: "43"},
         {program: "11 + 2 + 30 + 4",    expected: "47"},
         {program: "11 - 2 + 30 - 4",    expected: "35"},
-        {program: "11-2+30-4",  expected: "35"},
-        {program: "7 * 4 / 2",  expected: "14"},
-        {program: "7 * 4 / 2 * 3", expected: "42"},
-        {program: "10 * 4  * 2 * 3 / 8", expected: "30"},
+        {program: "11-2+30-4",          expected: "35"},
+        {program: "7 * 4 / 2",          expected: "14"},
+        {program: "7 * 4 / 2 * 3",      expected: "42"},
+        {program: "10 * 4  * 2 * 3 / 8",    expected: "30"},
+        {program: "14 + 2 * 3 - 6 / 2",     expected: "17"},
+        {program: "2 + 7 * 4",              expected: "30"},
+        {program: "7 - 8 / 4",              expected: "5"},
     ]
 
     failed_tests = 0
