@@ -228,21 +228,23 @@ class Parser(object):
     def expression(self):
 
         node = self.term()
+        node = self.expression_prime(node)
 
-        while self.current_token.type in (PLUS, MINUS):
-            token = self.current_token
+        return node
 
-            if token.type == PLUS:
-                self.match(PLUS)
+    def expression_prime(self, node):
 
-            elif token.type == MINUS:
-                self.match(MINUS)
+        token = self.current_token
 
-            else:
-                self.error()
-                break
-
+        if token.type == PLUS:
+            self.match(PLUS)
             node = BinOp(left=node, op=token, right=self.term())
+            node = self.expression_prime(node)
+
+        elif token.type == MINUS:
+            self.match(MINUS)
+            node = BinOp(left=node, op=token, right=self.term())
+            node = self.expression_prime(node)
 
         return node
 
