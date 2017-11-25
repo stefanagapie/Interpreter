@@ -285,7 +285,7 @@ class Parser(object):
             node = self.term_prime(node)
 
         return node
-        
+
     def expression(self):
 
         node = self.term()
@@ -484,9 +484,9 @@ def test_driver():
 
 
 def main():
-
-    test_driver()
-    return
+    #
+    # test_driver()
+    # return
 
     while True:
         try:
@@ -497,10 +497,21 @@ def main():
             print("Accpeted Format:[0..9][+,-][0..9]")
             continue
 
-        lexer = Lexer(terminal)
-        interpreter = Interpreter(lexer)
-        result = interpreter.run()
-        print(result)
+        output = ""
+        try:
+            lexer = Lexer(terminal)
+            parser = Parser(lexer)
+            interpreter = Interpreter(parser)
+
+            prog = interpreter.run()
+            interpreter.evaluate_program(prog)
+
+            output =interpreter.normal_output()
+        except:
+            output = "error"
+
+
+        print(output)
 
 if __name__ == '__main__':
     main()
