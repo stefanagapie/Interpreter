@@ -67,9 +67,6 @@ class Lexer(object):
         self.pos = 0
         self.current_char = self.text[self.pos]
 
-    def error(self):
-        raise Exception('Error parsing input')
-
     def advance(self):
         self.pos += 1
         if self.pos > len(self.text) - 1:
@@ -178,6 +175,9 @@ class Parser(object):
         # set current token to the first token taken from the input
         self.current_token = self.lexer.get_next_token()
 
+    def error(self):
+        raise Exception('Error parsing input')
+
     def match(self, token_type):
 
         if self.current_token.type == token_type:
@@ -204,21 +204,24 @@ class Parser(object):
     def term(self):
 
         node = self.factor()
+        node = self.term_prime(node)
 
-        while self.current_token.type in (MUL, DIV):
-            token = self.current_token
+        return node
 
-            if token.type == MUL:
-                self.match(MUL)
+    def term_prime(self, node):
 
-            elif token.type == DIV:
-                self.match(DIV)
+        token = self.current_token
 
-            else:
-                self.error()
-                break
-
+        if token.type == MUL:
+            self.match(MUL)
             node = BinOp(left=node, op=token, right=self.factor())
+            node = self.term_prime(node)
+
+        elif token.type == DIV:
+
+            self.match(DIV)
+            node = BinOp(left=node, op=token, right=self.factor())
+            node = self.term_prime(node)
 
         return node
 
