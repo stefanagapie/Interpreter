@@ -446,7 +446,11 @@ def test_driver():
         {program: "eval = - - - - 5 + - 3;",            expected: "eval = 2"},
         {program: "eval = 5 - - - + - 3;",              expected: "eval = 8"},
         {program: "eval = 5 - - - + - (3 + 4) - +2;",   expected: "eval = 10"},
-        {program: "rate = 4 + 5; kite = 5; flight = rate + kite;",  expected: "rate = 9, kite = 5, flight = 14"}
+        {program: "rate = 4 + 5; kite = 5; flight = rate + kite;",  expected: "rate = 9, kite = 5, flight = 14"},
+        {program: "x = 1; y = 2; z = ---(x+y)*(x+-y);", expected: "x = 1, y = 2, z = 3"},
+        # {program: "x = 0 y = x; z = ---(x+y);", expected: "error"},
+        # {program: "x_2 = 0;", expected: "x_2 = 0"},
+        # {program: "x = 001;", expected: "error"},
     ]
 
     failed_tests = 0
@@ -475,33 +479,10 @@ def test_driver():
     print(BCOLORS.OKBLUE, "\n:: END TESTS ::", BCOLORS.ENDC)
 
 
-def test_driver_2():
-
-    lexer = Lexer("rate = 4 + 5; kite = 5; flight = rate + kite;")
-
-    parser = Parser(lexer)
-
-    interpreter = Interpreter(parser)
-
-    program = interpreter.run()
-
-    interpreter.showTreeHeirarchy(program)
-
-    interpreter.evaluate_program(program)
-
-    print(interpreter.stringed_output())
-
-    print(interpreter.normal_output())
-    # print(interpreter.symbol_table)
-
-
 def main():
 
     test_driver()
     return
-
-    # test_driver_2()
-    # return
 
     while True:
         try:
@@ -519,7 +500,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-# Machine = Interpreter("3+6")
-#
-# print(Machine.get_next_token())
