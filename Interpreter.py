@@ -43,6 +43,7 @@ class Num(AST):
 # there is no more input left for lexical analysis
 INTEGER, PLUS, MINUS, MUL, DIV, LPAREN, RPAREN, EOF = ('INTEGER', 'PLUS', 'MINUS', 'MUL', 'DIV', '(', ')', 'EOF')
 
+
 class Token(object):
     def __init__(self, type, value=None):
         # token type: INTEGER, PLUS, MINUS, MUL, DIV, or EOF
@@ -128,13 +129,11 @@ class Lexer(object):
 
 class Interpreter(object):
 
-    def __init__(self, lexer):
-        self.lexer = lexer
-        # current token instance
-        self.current_token = self.lexer.get_next_token()
+    def __init__(self, parser):
+        self.parser = parser
 
     def run(self):
-        return self.expression()
+        return self.parser.expression()
 
     def compute_AST(self, root):
 
@@ -172,9 +171,12 @@ class Interpreter(object):
 
         showTree(root, 0)
 
-    ##########################################################
-    # Parser / Interpreter code                              #
-    ##########################################################
+
+class Parser(object):
+    def __init__(self, lexer):
+        self.lexer = lexer
+        # set current token to the first token taken from the input
+        self.current_token = self.lexer.get_next_token()
 
     def match(self, token_type):
 
@@ -286,7 +288,8 @@ def test_driver():
     for program_pkg in programs:
 
         lexer = Lexer(program_pkg[program])
-        interpreter = Interpreter(lexer)
+        parser = Parser(lexer)
+        interpreter = Interpreter(parser)
 
         # ast = abstract syntax tree
         ast = interpreter.run()
