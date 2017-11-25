@@ -310,13 +310,32 @@ class Interpreter(object):
 
     def __init__(self, parser):
         self.parser = parser
+        self.symbol_table = {}
 
     def run(self):
         return self.parser.program()
 
+    def evaluate_program(self, root):
+
+        if isinstance(root, Program):
+            for assignment in root.assignments:
+                self.evaluate_program(assignment)
+
+        if isinstance(root, Assign):
+            variable_name = root.left.value
+            self.symbol_table[variable_name] = int(self.compute_AST(root.right))
+
     def compute_AST(self, root):
 
-        if isinstance(root, Num):
+        if isinstance(root, Id):
+            variable_name = root.value
+            identifier_value = self.symbol_table.get(variable_name)
+            if identifier_value is None:
+                raise NameError(repr(variable_name))
+            else:
+                return identifier_value
+
+        elif isinstance(root, Num):
             return root.value
 
         elif isinstance(root, BinOp):
@@ -340,6 +359,21 @@ class Interpreter(object):
 
             elif root.token.type == MINUS:
                 return -self.compute_AST(root.expr)
+
+    def stringed_output(self):
+
+        output = ""
+        for (key, value) in self.symbol_table.items():
+            output += "{key} = {value}, ".format(key=key, value=value)
+        output = output[:-2]
+        return output
+
+    def normal_output(self):
+        output = ""
+        for (key, value) in self.symbol_table.items():
+            output += "{key} = {value}\n".format(key=key, value=value)
+        output = output[:-1]
+        return output
 
     def showTreeHeirarchy(self, root):
 
@@ -374,44 +408,44 @@ def test_driver():
     program = "program"
     expected = "expected"
     programs = [
-        {program: "3",  expected: "3"},
-        {program: "5 +7",   expected: "12"},
-        {program: "7- 5",   expected: "2"},
-        {program: "5+7",    expected: "12"},
-        {program: "7-5",    expected: "2"},
-        {program: "5 + 7",      expected: "12"},
-        {program: "7 - 5",      expected: "2"},
-        {program: "27+11",      expected: "38"},
-        {program: "11+22",      expected: "33"},
-        {program: "27+ 11",     expected: "38"},
-        {program: "11 +22",     expected: "33"},
-        {program: "27 + 11",    expected: "38"},
-        {program: "11 + 22",    expected: "33"},
-        {program: "22 + 1",     expected: "23"},
-        {program: "1 + 22",     expected: "23"},
-        {program: "1 + 2 + 3",      expected: "6"},
-        {program: "11 + 2 + 30",    expected: "43"},
-        {program: "11 + 2 + 30 + 4",    expected: "47"},
-        {program: "11 - 2 + 30 - 4",    expected: "35"},
-        {program: "11-2+30-4",          expected: "35"},
-        {program: "7 * 4 / 2",          expected: "14"},
-        {program: "7 * 4 / 2 * 3",      expected: "42"},
-        {program: "10 * 4  * 2 * 3 / 8",    expected: "30"},
-        {program: "14 + 2 * 3 - 6 / 2",     expected: "17"},
-        {program: "2 + 7 * 4",              expected: "30"},
-        {program: "7 - 8 / 4",              expected: "5"},
-        {program: "(14 + 2) * (9 - 3) / 3", expected: "32"},
-        {program: "(2 + 7) * 4",            expected: "36"},
-        {program: "(1 - 9) / 4",            expected: "-2"},
-        {program: "7 + 3 * (10 / (12 / (3 + 1) - 1))",  expected: "22"},
-        {program: "7 + (((3 + 2)))",                    expected: "12"},
-        {program: "7 + 3 * (10 / (12 / (3 + 1) - 1)) / (2 + 3) - 5 - 3 + (8)", expected: "10"},
-        {program: "- 3",    expected: "-3"},
-        {program: "+ 3",    expected: "3"},
-        {program: "- - - 5 + - 3",              expected: "-8"},
-        {program: "- - - - 5 + - 3",            expected: "2"},
-        {program: "5 - - - + - 3",              expected: "8"},
-        {program: "5 - - - + - (3 + 4) - +2",   expected: "10"},
+        {program: "eval = 3;",  expected: "eval = 3"},
+        {program: "eval = 5 +7;",   expected: "eval = 12"},
+        {program: "eval = 7- 5;",   expected: "eval = 2"},
+        {program: "eval = 5+7;",    expected: "eval = 12"},
+        {program: "eval = 7-5;",    expected: "eval = 2"},
+        {program: "eval = 5 + 7;",      expected: "eval = 12"},
+        {program: "eval = 7 - 5;",      expected: "eval = 2"},
+        {program: "eval = 27+11;",      expected: "eval = 38"},
+        {program: "eval = 11+22;",      expected: "eval = 33"},
+        {program: "eval = 27+ 11;",     expected: "eval = 38"},
+        {program: "eval = 11 +22;",     expected: "eval = 33"},
+        {program: "eval = 27 + 11;",    expected: "eval = 38"},
+        {program: "eval = 11 + 22;",    expected: "eval = 33"},
+        {program: "eval = 22 + 1;",     expected: "eval = 23"},
+        {program: "eval = 1 + 22;",     expected: "eval = 23"},
+        {program: "eval = 1 + 2 + 3;",      expected: "eval = 6"},
+        {program: "eval = 11 + 2 + 30;",    expected: "eval = 43"},
+        {program: "eval = 11 + 2 + 30 + 4;",    expected: "eval = 47"},
+        {program: "eval = 11 - 2 + 30 - 4;",    expected: "eval = 35"},
+        {program: "eval = 11-2+30-4;",          expected: "eval = 35"},
+        {program: "eval = 7 * 4 / 2;",          expected: "eval = 14"},
+        {program: "eval = 7 * 4 / 2 * 3;",      expected: "eval = 42"},
+        {program: "eval = 10 * 4  * 2 * 3 / 8;",    expected: "eval = 30"},
+        {program: "eval = 14 + 2 * 3 - 6 / 2;",     expected: "eval = 17"},
+        {program: "eval = 2 + 7 * 4;",              expected: "eval = 30"},
+        {program: "eval = 7 - 8 / 4;",              expected: "eval = 5"},
+        {program: "eval = (14 + 2) * (9 - 3) / 3;", expected: "eval = 32"},
+        {program: "eval = (2 + 7) * 4;",            expected: "eval = 36"},
+        {program: "eval = (1 - 9) / 4;",            expected: "eval = -2"},
+        {program: "eval = 7 + 3 * (10 / (12 / (3 + 1) - 1));",  expected: "eval = 22"},
+        {program: "eval = 7 + (((3 + 2)));",                    expected: "eval = 12"},
+        {program: "eval = 7 + 3 * (10 / (12 / (3 + 1) - 1)) / (2 + 3) - 5 - 3 + (8);", expected: "eval = 10"},
+        {program: "eval = - 3;",    expected: "eval = -3"},
+        {program: "eval = + 3;",    expected: "eval = 3"},
+        {program: "eval = - - - 5 + - 3;",              expected: "eval = -8"},
+        {program: "eval = - - - - 5 + - 3;",            expected: "eval = 2"},
+        {program: "eval = 5 - - - + - 3;",              expected: "eval = 8"},
+        {program: "eval = 5 - - - + - (3 + 4) - +2;",   expected: "eval = 10"},
     ]
 
     failed_tests = 0
@@ -423,16 +457,16 @@ def test_driver():
         parser = Parser(lexer)
         interpreter = Interpreter(parser)
 
-        # ast = abstract syntax tree
-        ast = interpreter.run()
-        ast_value = int(interpreter.compute_AST(ast))
+        prog = interpreter.run()
+        interpreter.evaluate_program(prog)
 
-        if str(ast_value) != str(program_pkg[expected]):
-            print(BCOLORS.FAIL, "Test: <Failed>", program_pkg, "Actual:",ast_value, BCOLORS.ENDC)
+        output = interpreter.stringed_output()
+        if str(output) != str(program_pkg[expected]):
+            print(BCOLORS.FAIL, "Test: <Failed> Input:", program_pkg, "Actual:", output, BCOLORS.ENDC)
             failed_tests += 1
-            interpreter.showTreeHeirarchy(ast)
+            interpreter.showTreeHeirarchy(program)
         else:
-            print(BCOLORS.OKGREEN, "Test: <Passed>", program_pkg[program], "=", ast_value, BCOLORS.ENDC)
+            print(BCOLORS.OKGREEN, "Test: <Passed> Input:", program_pkg[program], "Output:", output, BCOLORS.ENDC)
             passed_tests += 1
 
     print(BCOLORS.HEADER, "\n\tSTATISTICS: Failed = "+str(failed_tests)+", Passed = "+str(passed_tests), BCOLORS.ENDC)
@@ -441,7 +475,7 @@ def test_driver():
 
 def test_driver_2():
 
-    lexer = Lexer("rate = 4 + 5; kite = 5;")
+    lexer = Lexer("rate = 4 + 5; kite = 5; flight = rate + kite;")
 
     parser = Parser(lexer)
 
@@ -451,13 +485,21 @@ def test_driver_2():
 
     interpreter.showTreeHeirarchy(program)
 
+    interpreter.evaluate_program(program)
+
+    print(interpreter.stringed_output())
+
+    print(interpreter.normal_output())
+    # print(interpreter.symbol_table)
+
+
 def main():
 
-    # test_driver()
-    # return
-
-    test_driver_2()
+    test_driver()
     return
+
+    # test_driver_2()
+    # return
 
     while True:
         try:
