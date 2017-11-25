@@ -9,6 +9,34 @@ class BCOLORS:
     UNDERLINE = '\033[4m'
 
 
+class AST(object):
+    pass
+
+
+class BinOp(AST):
+    def __init__(self, left, op, right):
+        self.left = left
+        self.token = self.op = op
+        self.right = right
+
+    def __str__(self):
+        return 'BinOp({value})'.format(value=repr(self.token.value))
+
+    def __repr__(self):
+        return self.__str__()
+
+
+class Num(AST):
+    def __init__(self, token):
+        self.token = token
+        self.value = token.value
+
+    def __str__(self):
+        return 'Num({value})'.format(value=repr(self.value))
+
+    def __repr__(self):
+        return self.__str__()
+
 # Token types
 #
 # EOF (end-of-file) token is used to indicate that
@@ -108,6 +136,42 @@ class Interpreter(object):
     def run(self):
         return self.expression()
 
+    def compute_AST(self, root):
+
+        if isinstance(root, Num):
+            return root.value
+
+        elif isinstance(root, BinOp):
+
+            if root.token.type == PLUS:
+                return self.compute_AST(root.left) + self.compute_AST(root.right)
+
+            elif root.token.type == MINUS:
+                return self.compute_AST(root.left) - self.compute_AST(root.right)
+
+            elif root.token.type == MUL:
+                return self.compute_AST(root.left) * self.compute_AST(root.right)
+
+            elif root.token.type == DIV:
+                return self.compute_AST(root.left) / self.compute_AST(root.right)
+
+    def showTreeHeirarchy(self, root):
+
+        def showTree(root, level):
+
+            padding = ""
+            if level > 0:
+                padding = " " * level * 4
+                # padding += "\u2514"
+                # padding += "\u2500\u2500"
+            print(padding + root.__str__())
+
+            if isinstance(root, BinOp):
+                showTree(root.left, level + 1)
+                showTree(root.right, level + 1)
+
+        showTree(root, 0)
+
     ##########################################################
     # Parser / Interpreter code                              #
     ##########################################################
@@ -124,58 +188,58 @@ class Interpreter(object):
         token = self.current_token
         if token.type == INTEGER:
             self.match(INTEGER)
-            return token.value
+            return Num(token)
 
         elif token.type == LPAREN:
             self.match('(')
-            result = self.expression()
+            node = self.expression()
             self.match(')')
-            return result
+            return node
 
         else:
             self.error()
 
     def term(self):
 
-        result = self.factor()
+        node = self.factor()
 
         while self.current_token.type in (MUL, DIV):
             token = self.current_token
 
             if token.type == MUL:
                 self.match(MUL)
-                result = result * self.factor()
 
             elif token.type == DIV:
                 self.match(DIV)
-                result = result / self.factor()
 
             else:
                 self.error()
                 break
 
-        return result
+            node = BinOp(left=node, op=token, right=self.factor())
+
+        return node
 
     def expression(self):
 
-        result = self.term()
+        node = self.term()
 
         while self.current_token.type in (PLUS, MINUS):
             token = self.current_token
 
             if token.type == PLUS:
                 self.match(PLUS)
-                result = result + self.term()
 
             elif token.type == MINUS:
                 self.match(MINUS)
-                result = result - self.term()
 
             else:
                 self.error()
                 break
 
-        return result
+            node = BinOp(left=node, op=token, right=self.term())
+
+        return node
 
 
 def test_driver():
@@ -223,22 +287,44 @@ def test_driver():
 
         lexer = Lexer(program_pkg[program])
         interpreter = Interpreter(lexer)
-        result = int(interpreter.run())
 
-        if str(result) != str(program_pkg[expected]):
-            print(BCOLORS.FAIL, "Test: <Failed>", program_pkg, "Actual:",result, BCOLORS.ENDC)
+        # ast = abstract syntax tree
+        ast = interpreter.run()
+        ast_value = int(interpreter.compute_AST(ast))
+
+        if str(ast_value) != str(program_pkg[expected]):
+            print(BCOLORS.FAIL, "Test: <Failed>", program_pkg, "Actual:",ast_value, BCOLORS.ENDC)
             failed_tests += 1
+            interpreter.showTreeHeirarchy(ast)
         else:
-            print(BCOLORS.OKGREEN, "Test: <Passed>", program_pkg[program], "=", result, BCOLORS.ENDC)
+            print(BCOLORS.OKGREEN, "Test: <Passed>", program_pkg[program], "=", ast_value, BCOLORS.ENDC)
             passed_tests += 1
 
     print(BCOLORS.HEADER, "\n\tSTATISTICS: Failed = "+str(failed_tests)+", Passed = "+str(passed_tests), BCOLORS.ENDC)
     print(BCOLORS.OKBLUE, "\n:: END TESTS ::", BCOLORS.ENDC)
 
+
+def test_driver_2():
+
+    lexer = Lexer("2 + 7 * 4")
+
+    interpreter = Interpreter(lexer)
+
+    ast = interpreter.run()
+
+    interpreter.showTreeHeirarchy(ast)
+
+    ast_value = interpreter.compute_AST(ast)
+
+    print(ast_value)
+
 def main():
 
     test_driver()
     return
+
+    # test_driver_2()
+    # return
 
     while True:
         try:
