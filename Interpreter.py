@@ -356,7 +356,7 @@ class Interpreter(object):
             variable_name = root.value
             identifier_value = self.symbol_table.get(variable_name)
             if identifier_value is None:
-                raise NameError(repr(variable_name))
+                raise Exception(repr(variable_name))
             else:
                 return identifier_value
 
@@ -473,29 +473,33 @@ def test_driver():
         {program: "eval = 5 - - - + - (3 + 4) - +2;",   expected: "eval = 10"},
         {program: "rate = 4 + 5; kite = 5; flight = rate + kite;",  expected: "rate = 9, kite = 5, flight = 14"},
         {program: "x = 1; y = 2; z = ---(x+y)*(x+-y);", expected: "x = 1, y = 2, z = 3"},
-        # {program: "x = 0 y = x; z = ---(x+y);", expected: "error"},
-        # {program: "x_2 = 0;", expected: "x_2 = 0"},
-        # {program: "x = 001;", expected: "error"},
+        {program: "x = 0 y = x; z = ---(x+y);", expected: "error"},
+        {program: "x_2 = 0;", expected: "x_2 = 0"},
+        {program: "x = 001;", expected: "error"},
     ]
 
     failed_tests = 0
     passed_tests = 0
     print(BCOLORS.OKBLUE, "\n:: BEGIN TESTS ::\n", BCOLORS.ENDC)
+
+    interpreter = Interpreter()
     for program_pkg in programs:
 
-        lexer = Lexer(program_pkg[program])
-        parser = Parser(lexer)
-        interpreter = Interpreter(parser)
+        interpreter.reset()
 
-        prog = interpreter.run()
-        interpreter.evaluate_program(prog)
+        output = ""
+        try:
+            interpreter.evaluate_input(program_pkg[program])
+            output = interpreter.stringed_output()
+        except:
+            print("Exceptional Code...")
+            continue
 
-        output = interpreter.stringed_output()
         if str(output) != str(program_pkg[expected]):
             print(BCOLORS.FAIL, "Test: <Failed> Input:", program_pkg[program],
                   "\n\t:: Expected:", program_pkg[expected], "\n\t::   Actual:", output, BCOLORS.ENDC)
             failed_tests += 1
-            interpreter.showTreeHeirarchy(prog)
+            # interpreter.showTreeHeirarchy(prog)
         else:
             print(BCOLORS.OKGREEN, "Test: <Passed> Input:", program_pkg[program], ":: Output:", output, BCOLORS.ENDC)
             passed_tests += 1
@@ -505,7 +509,7 @@ def test_driver():
 
 
 def main():
-    #
+
     # test_driver()
     # return
 
