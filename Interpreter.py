@@ -105,89 +105,96 @@ class Token(object):
 
 
 class Lexer(object):
+    def __init__(self):
+        self.text = ""
+        self.pos = 0
+        self.current_char = ""
 
-    def __init__(self, text):
-        # client string input, e.g. "3+5"
-        self.text = text
-        # self.pos is an index into self.text
+    def reset(self):
+        self.text = ""
+        self.pos = 0
+        self.current_char = None
+
+    def scanner_input(self, input_program):
+        self.text = input_program
         self.pos = 0
         self.current_char = self.text[self.pos]
 
-    def error(self):
+    def _error(self):
         raise Exception('Error parsing input')
 
-    def advance(self):
+    def _advance(self):
         self.pos += 1
         if self.pos > len(self.text) - 1:
             self.current_char = None
         else:
             self.current_char = self.text[self.pos]
 
-    def skip_whitespace(self):
+    def _skip_whitespace(self):
         while self.current_char is not None and self.current_char.isspace():
-            self.advance()
+            self._advance()
 
-    def integer(self):
+    def _integer(self):
         result = ''
         while self.current_char is not None and self.current_char.isdigit():
             result += self.current_char
-            self.advance()
+            self._advance()
         return int(result)
 
-    def identifier(self):
+    def _identifier(self):
         """Handle identifiers and reserved keywords"""
         result = ''
         while self.current_char is not None and self.current_char.isalnum():
             result += self.current_char
-            self.advance()
+            self._advance()
         return result
 
     def get_next_token(self):
         while self.current_char is not None:
 
             if self.current_char.isspace():
-                self.skip_whitespace()
+                self._skip_whitespace()
 
             elif self.current_char.isdigit():
-                return Token(INTEGER, self.integer())
+                return Token(INTEGER, self._integer())
 
             elif self.current_char.isalnum():
-                return Token(ID, self.identifier())
+                return Token(ID, self._identifier())
 
             elif self.current_char == "=":
-                self.advance()
+                self._advance()
                 return Token(ASSIGN, "=")
 
             elif self.current_char == ";":
-                self.advance()
+                self._advance()
                 return Token(SEMI, ";")
 
             elif self.current_char == "+":
-                self.advance()
+                self._advance()
                 return Token(PLUS, "+")
 
             elif self.current_char == "-":
-                self.advance()
+                self._advance()
                 return Token(MINUS, "-")
 
             elif self.current_char == "*":
-                self.advance()
+                self._advance()
                 return Token(MUL, "*")
 
             elif self.current_char == "/":
-                self.advance()
+                self._advance()
                 return Token(DIV, "/")
 
             elif self.current_char == "(":
-                self.advance()
+                self._advance()
                 return Token(LPAREN, "(")
 
             elif self.current_char == ")":
-                self.advance()
+                self._advance()
                 return Token(RPAREN, ")")
 
-            else:
-                self.error()
+            elif self.current_char == "":
+                self._advance()
 
         return Token(EOF)
 
@@ -198,138 +205,152 @@ class Parser(object):
         # set current token to the first token taken from the input
         self.current_token = self.lexer.get_next_token()
 
-    def match(self, token_type):
-
-        token = self.current_token
-        if self.current_token.type == token_type:
-            self.current_token = self.lexer.get_next_token()
-            return token
-        else:
-            self.error()
-
-    def error(self):
-        raise Exception('Error parsing input')
+    def reset(self):
+        self.current_token = self.lexer.get_next_token()
 
     def program(self):
 
         program = Program()
 
         while self.current_token.type != EOF:
-            program.addStatement(self.statement())
+            program.addStatement(self._statement())
 
         return program
 
-    def statement(self):
+    def _match(self, token_type):
 
-        left_node = self.identifier()
-        assign_token = self.match(ASSIGN)
-        right_node = self.expression()
-        self.match(SEMI)
+        token = self.current_token
+        if self.current_token.type == token_type:
+            self.current_token = self.lexer.get_next_token()
+            return token
+        else:
+            self._error()
+
+    def _error(self):
+        raise Exception('Error parsing input')
+
+    def _statement(self):
+
+        left_node = self._identifier()
+        assign_token = self._match(ASSIGN)
+        right_node = self._expression()
+        self._match(SEMI)
 
         return Assign(left_node, assign_token, right_node)
 
-    def identifier(self):
+    def _identifier(self):
 
-        token = self.match(ID)
+        token = self._match(ID)
         node = Id(token)
 
         return node
 
-    def factor(self):
+    def _factor(self):
 
         token = self.current_token
 
         if token.type == PLUS:
-            self.match(PLUS)
-            return UnaryOp(token, self.factor())
+            self._match(PLUS)
+            return UnaryOp(token, self._factor())
 
         elif token.type == MINUS:
-            self.match(MINUS)
-            return UnaryOp(token, self.factor())
+            self._match(MINUS)
+            return UnaryOp(token, self._factor())
 
         elif token.type == INTEGER:
-            self.match(INTEGER)
+            self._match(INTEGER)
             return Num(token)
 
         elif token.type == LPAREN:
-            self.match('(')
-            node = self.expression()
-            self.match(')')
+            self._match('(')
+            node = self._expression()
+            self._match(')')
             return node
 
         elif token.type == ID:
-            return self.identifier()
+            return self._identifier()
 
         else:
-            self.error()
+            self._error()
 
-    def term(self):
+    def _term(self):
 
-        node = self.factor()
-        node = self.term_prime(node)
+        node = self._factor()
+        node = self._term_prime(node)
 
         return node
 
-    def term_prime(self, node):
+    def _term_prime(self, node):
 
         token = self.current_token
 
         if token.type == MUL:
-            self.match(MUL)
-            node = BinOp(left=node, op=token, right=self.factor())
-            node = self.term_prime(node)
+            self._match(MUL)
+            node = BinOp(left=node, op=token, right=self._factor())
+            node = self._term_prime(node)
 
         elif token.type == DIV:
-            self.match(DIV)
-            node = BinOp(left=node, op=token, right=self.factor())
-            node = self.term_prime(node)
+            self._match(DIV)
+            node = BinOp(left=node, op=token, right=self._factor())
+            node = self._term_prime(node)
 
         return node
 
-    def expression(self):
+    def _expression(self):
 
-        node = self.term()
-        node = self.expression_prime(node)
+        node = self._term()
+        node = self._expression_prime(node)
 
         return node
 
-    def expression_prime(self, node):
+    def _expression_prime(self, node):
 
         token = self.current_token
 
         if token.type == PLUS:
-            self.match(PLUS)
-            node = BinOp(left=node, op=token, right=self.term())
-            node = self.expression_prime(node)
+            self._match(PLUS)
+            node = BinOp(left=node, op=token, right=self._term())
+            node = self._expression_prime(node)
 
         elif token.type == MINUS:
-            self.match(MINUS)
-            node = BinOp(left=node, op=token, right=self.term())
-            node = self.expression_prime(node)
+            self._match(MINUS)
+            node = BinOp(left=node, op=token, right=self._term())
+            node = self._expression_prime(node)
 
         return node
 
 
 class Interpreter(object):
 
-    def __init__(self, parser):
-        self.parser = parser
+    def __init__(self):
+        self.lexer = Lexer()
+        self.parser = Parser(self.lexer)
         self.symbol_table = {}
 
-    def run(self):
-        return self.parser.program()
+    def evaluate_input(self, input_string):
+        self.lexer.scanner_input(input_string)
+        self.parser.reset()
+        prog = self.parser.program()
+        self._evaluate_program(prog)
 
-    def evaluate_program(self, root):
+        return prog
+
+    def reset(self):
+        self.lexer.reset()
+        self.parser.reset()
+        self.symbol_table = {}
+
+    def _evaluate_program(self, root):
 
         if isinstance(root, Program):
             for assignment in root.assignments:
-                self.evaluate_program(assignment)
+                self._evaluate_program(assignment)
 
         if isinstance(root, Assign):
             variable_name = root.left.value
-            self.symbol_table[variable_name] = int(self.compute_AST(root.right))
+            self.symbol_table[variable_name] = int(self._compute_AST(root.right))
 
-    def compute_AST(self, root):
+    def _compute_AST(self, root):
 
         if isinstance(root, Id):
             variable_name = root.value
@@ -345,24 +366,24 @@ class Interpreter(object):
         elif isinstance(root, BinOp):
 
             if root.token.type == PLUS:
-                return self.compute_AST(root.left) + self.compute_AST(root.right)
+                return self._compute_AST(root.left) + self._compute_AST(root.right)
 
             elif root.token.type == MINUS:
-                return self.compute_AST(root.left) - self.compute_AST(root.right)
+                return self._compute_AST(root.left) - self._compute_AST(root.right)
 
             elif root.token.type == MUL:
-                return self.compute_AST(root.left) * self.compute_AST(root.right)
+                return self._compute_AST(root.left) * self._compute_AST(root.right)
 
             elif root.token.type == DIV:
-                return self.compute_AST(root.left) / self.compute_AST(root.right)
+                return self._compute_AST(root.left) / self._compute_AST(root.right)
 
         elif isinstance(root, UnaryOp):
 
             if root.token.type == PLUS:
-                return +self.compute_AST(root.expr)
+                return +self._compute_AST(root.expr)
 
             elif root.token.type == MINUS:
-                return -self.compute_AST(root.expr)
+                return -self._compute_AST(root.expr)
 
     def stringed_output(self):
 
@@ -488,6 +509,8 @@ def main():
     # test_driver()
     # return
 
+    interpreter = Interpreter()
+
     while True:
         try:
             terminal = input('uNiCoRn> ')
@@ -498,18 +521,27 @@ def main():
             continue
 
         output = ""
-        try:
-            lexer = Lexer(terminal)
-            parser = Parser(lexer)
-            interpreter = Interpreter(parser)
 
-            prog = interpreter.run()
-            interpreter.evaluate_program(prog)
+        if terminal == "exit":
+            break
 
-            output =interpreter.normal_output()
-        except:
-            output = "error"
+        elif terminal == "reset":
+            try:
+                interpreter.reset()
+            except:
+                output = "error -- could not reset"
 
+        elif terminal == "symbols":
+            try:
+                output = interpreter.normal_output()
+            except:
+                output = "error -- could not get symbols"
+        else:
+            try:
+                interpreter.evaluate_input(terminal)
+                output = interpreter.normal_output()
+            except:
+                output = "error"
 
         print(output)
 
