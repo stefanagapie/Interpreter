@@ -10,11 +10,29 @@ class BCOLORS:
 
 
 class AST(object):
-    pass
+    def __repr__(self):
+        return self.__str__()
 
 
 class NoOp(AST):
     pass
+
+
+class Program(AST):
+    def __init__(self):
+        self.assignments = []
+
+    def __str__(self):
+        return 'Program({value})'.format(value=repr(len(self.assignments)))
+
+    def addStatement(self, stmt):
+        self.assignments.append(stmt)
+
+    def statementAtIndex(self, index):
+        stmt = None
+        if index < len(self.assignments):
+            stmt = self.assignments[index]
+        return stmt
 
 
 class Id(AST):
@@ -25,9 +43,6 @@ class Id(AST):
     def __str__(self):
         return 'Id({value})'.format(value=repr(self.token.value))
 
-    def __repr__(self):
-        return self.__str__()
-
 
 class Num(AST):
     def __init__(self, token):
@@ -36,9 +51,6 @@ class Num(AST):
 
     def __str__(self):
         return 'Num({value})'.format(value=repr(self.value))
-
-    def __repr__(self):
-        return self.__str__()
 
 
 class Assign(AST):
@@ -50,9 +62,6 @@ class Assign(AST):
     def __str__(self):
         return 'Assign({value})'.format(value=repr(self.token.value))
 
-    def __repr__(self):
-        return self.__str__()
-
 
 class BinOp(AST):
     def __init__(self, left, op, right):
@@ -63,9 +72,6 @@ class BinOp(AST):
     def __str__(self):
         return 'BinOp({value})'.format(value=repr(self.token.value))
 
-    def __repr__(self):
-        return self.__str__()
-
 
 class UnaryOp(AST):
     def __init__(self, op, expr):
@@ -74,9 +80,6 @@ class UnaryOp(AST):
 
     def __str__(self):
         return 'UnaryOp({value})'.format(value=repr(self.token.value))
-
-    def __repr__(self):
-        return self.__str__()
 
 
 # Token types
@@ -209,12 +212,12 @@ class Parser(object):
 
     def program(self):
 
-        results = []
+        program = Program()
 
         while self.current_token.type != EOF:
-            results.append(self.statement())
+            program.addStatement(self.statement())
 
-        return results
+        return program
 
     def statement(self):
 
@@ -349,6 +352,10 @@ class Interpreter(object):
                 # padding += "\u2500\u2500"
             print(padding + root.__str__())
 
+            if isinstance(root, Program):
+                for assignment in root.assignments:
+                    showTree(assignment, level + 1)
+
             if isinstance(root, BinOp):
                 showTree(root.left, level + 1)
                 showTree(root.right, level + 1)
@@ -442,8 +449,7 @@ def test_driver_2():
 
     program = interpreter.run()
 
-    for stmt in program:
-        interpreter.showTreeHeirarchy(stmt)
+    interpreter.showTreeHeirarchy(program)
 
 def main():
 
