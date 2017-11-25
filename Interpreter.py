@@ -13,14 +13,17 @@ class AST(object):
     pass
 
 
-class BinOp(AST):
-    def __init__(self, left, op, right):
-        self.left = left
-        self.token = self.op = op
-        self.right = right
+class NoOp(AST):
+    pass
+
+
+class Id(AST):
+    def __init__(self, token):
+        self.token = token
+        self.value = token.value
 
     def __str__(self):
-        return 'BinOp({value})'.format(value=repr(self.token.value))
+        return 'Id({value})'.format(value=repr(self.token.value))
 
     def __repr__(self):
         return self.__str__()
@@ -38,6 +41,32 @@ class Num(AST):
         return self.__str__()
 
 
+class Assign(AST):
+    def __init__(self, left, op, right):
+        self.left = left
+        self.token = self.op = op
+        self.right = right
+
+    def __str__(self):
+        return 'Assign({value})'.format(value=repr(self.token.value))
+
+    def __repr__(self):
+        return self.__str__()
+
+
+class BinOp(AST):
+    def __init__(self, left, op, right):
+        self.left = left
+        self.token = self.op = op
+        self.right = right
+
+    def __str__(self):
+        return 'BinOp({value})'.format(value=repr(self.token.value))
+
+    def __repr__(self):
+        return self.__str__()
+
+
 class UnaryOp(AST):
     def __init__(self, op, expr):
         self.token = self.op = op
@@ -49,11 +78,13 @@ class UnaryOp(AST):
     def __repr__(self):
         return self.__str__()
 
+
 # Token types
 #
 # EOF (end-of-file) token is used to indicate that
 # there is no more input left for lexical analysis
-INTEGER, PLUS, MINUS, MUL, DIV, LPAREN, RPAREN, EOF = ('INTEGER', 'PLUS', 'MINUS', 'MUL', 'DIV', '(', ')', 'EOF')
+INTEGER, ID, ASSIGN, PLUS, MINUS, MUL, DIV, LPAREN, RPAREN, SEMI, EOF = \
+    ('INTEGER', 'ID', 'ASSIGN', 'PLUS', 'MINUS', 'MUL', 'DIV', '(', ')', 'SEMI', 'EOF')
 
 
 class Token(object):
@@ -100,6 +131,14 @@ class Lexer(object):
             self.advance()
         return int(result)
 
+    def identifier(self):
+        """Handle identifiers and reserved keywords"""
+        result = ''
+        while self.current_char is not None and self.current_char.isalnum():
+            result += self.current_char
+            self.advance()
+        return result
+
     def get_next_token(self):
         while self.current_char is not None:
 
@@ -108,6 +147,17 @@ class Lexer(object):
 
             elif self.current_char.isdigit():
                 return Token(INTEGER, self.integer())
+
+            elif self.current_char.isalnum():
+                return Token(ID, self.identifier())
+
+            elif self.current_char == "=":
+                self.advance()
+                return Token(ASSIGN, "=")
+
+            elif self.current_char == ";":
+                self.advance()
+                return Token(SEMI, ";")
 
             elif self.current_char == "+":
                 self.advance()
@@ -139,62 +189,6 @@ class Lexer(object):
         return Token(EOF)
 
 
-class Interpreter(object):
-
-    def __init__(self, parser):
-        self.parser = parser
-
-    def run(self):
-        return self.parser.expression()
-
-    def compute_AST(self, root):
-
-        if isinstance(root, Num):
-            return root.value
-
-        elif isinstance(root, BinOp):
-
-            if root.token.type == PLUS:
-                return self.compute_AST(root.left) + self.compute_AST(root.right)
-
-            elif root.token.type == MINUS:
-                return self.compute_AST(root.left) - self.compute_AST(root.right)
-
-            elif root.token.type == MUL:
-                return self.compute_AST(root.left) * self.compute_AST(root.right)
-
-            elif root.token.type == DIV:
-                return self.compute_AST(root.left) / self.compute_AST(root.right)
-
-        elif isinstance(root, UnaryOp):
-
-            if root.token.type == PLUS:
-                return +self.compute_AST(root.expr)
-
-            elif root.token.type == MINUS:
-                return -self.compute_AST(root.expr)
-
-    def showTreeHeirarchy(self, root):
-
-        def showTree(root, level):
-
-            padding = ""
-            if level > 0:
-                padding = " " * level * 4
-                # padding += "\u2514"
-                # padding += "\u2500\u2500"
-            print(padding + root.__str__())
-
-            if isinstance(root, BinOp):
-                showTree(root.left, level + 1)
-                showTree(root.right, level + 1)
-
-            elif isinstance(root, UnaryOp):
-                showTree(root.expr, level + 1)
-
-        showTree(root, 0)
-
-
 class Parser(object):
     def __init__(self, lexer):
         self.lexer = lexer
@@ -203,10 +197,42 @@ class Parser(object):
 
     def match(self, token_type):
 
+        print(token_type)
+
+        token = self.current_token
         if self.current_token.type == token_type:
             self.current_token = self.lexer.get_next_token()
+            return token
         else:
             self.error()
+
+    def error(self):
+        raise Exception('Error parsing input')
+
+    def program(self):
+
+        results = []
+
+        while self.current_token.type != EOF:
+            results.append(self.statement())
+
+        return results
+
+    def statement(self):
+
+        left_node = self.identifier()
+        assign_token = self.match(ASSIGN)
+        right_node = self.expression()
+        self.match(SEMI)
+
+        return Assign(left_node, assign_token, right_node)
+
+    def identifier(self):
+
+        token = self.match(ID)
+        node = Id(token)
+
+        return node
 
     def factor(self):
 
@@ -229,6 +255,9 @@ class Parser(object):
             node = self.expression()
             self.match(')')
             return node
+
+        elif token.type == ID:
+            return self.identifier()
 
         else:
             self.error()
@@ -274,6 +303,66 @@ class Parser(object):
             node = BinOp(left=node, op=token, right=self.term())
 
         return node
+
+
+class Interpreter(object):
+
+    def __init__(self, parser):
+        self.parser = parser
+
+    def run(self):
+        return self.parser.program()
+
+    def compute_AST(self, root):
+
+        if isinstance(root, Num):
+            return root.value
+
+        elif isinstance(root, BinOp):
+
+            if root.token.type == PLUS:
+                return self.compute_AST(root.left) + self.compute_AST(root.right)
+
+            elif root.token.type == MINUS:
+                return self.compute_AST(root.left) - self.compute_AST(root.right)
+
+            elif root.token.type == MUL:
+                return self.compute_AST(root.left) * self.compute_AST(root.right)
+
+            elif root.token.type == DIV:
+                return self.compute_AST(root.left) / self.compute_AST(root.right)
+
+        elif isinstance(root, UnaryOp):
+
+            if root.token.type == PLUS:
+                return +self.compute_AST(root.expr)
+
+            elif root.token.type == MINUS:
+                return -self.compute_AST(root.expr)
+
+    def showTreeHeirarchy(self, root):
+
+        def showTree(root, level):
+
+            padding = ""
+            if level > 0:
+                padding = " " * level * 4
+                # padding += "\u2514"
+                # padding += "\u2500\u2500"
+            print(padding + root.__str__())
+
+            if isinstance(root, BinOp):
+                showTree(root.left, level + 1)
+                showTree(root.right, level + 1)
+
+            if isinstance(root, Assign):
+                showTree(root.left, level + 1)
+                showTree(root.right, level + 1)
+
+            elif isinstance(root, UnaryOp):
+                showTree(root.expr, level + 1)
+
+        showTree(root, 0)
 
 
 def test_driver():
@@ -347,25 +436,24 @@ def test_driver():
 
 def test_driver_2():
 
-    lexer = Lexer("2 + 7 * 4")
+    lexer = Lexer("rate = 4 + 5; kite = 5;")
 
-    interpreter = Interpreter(lexer)
+    parser = Parser(lexer)
 
-    ast = interpreter.run()
+    interpreter = Interpreter(parser)
 
-    interpreter.showTreeHeirarchy(ast)
+    program = interpreter.run()
 
-    ast_value = interpreter.compute_AST(ast)
-
-    print(ast_value)
+    for stmt in program:
+        interpreter.showTreeHeirarchy(stmt)
 
 def main():
 
-    test_driver()
-    return
-
-    # test_driver_2()
+    # test_driver()
     # return
+
+    test_driver_2()
+    return
 
     while True:
         try:
