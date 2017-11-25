@@ -57,6 +57,7 @@ INTEGER, PLUS, MINUS, MUL, DIV, LPAREN, RPAREN, EOF = ('INTEGER', 'PLUS', 'MINUS
 
 
 class Token(object):
+    
     def __init__(self, type, value=None):
         # token type: INTEGER, PLUS, MINUS, MUL, DIV, or EOF
         self.type = type
@@ -196,6 +197,7 @@ class Interpreter(object):
 
 
 class Parser(object):
+
     def __init__(self, lexer):
         self.lexer = lexer
         # set current token to the first token taken from the input
@@ -236,42 +238,46 @@ class Parser(object):
     def term(self):
 
         node = self.factor()
+        node = self.term_prime(node)
 
-        while self.current_token.type in (MUL, DIV):
-            token = self.current_token
+        return node
 
-            if token.type == MUL:
-                self.match(MUL)
+    def term_prime(self, node):
 
-            elif token.type == DIV:
-                self.match(DIV)
+        token = self.current_token
 
-            else:
-                self.error()
-                break
-
+        if token.type == MUL:
+            self.match(MUL)
             node = BinOp(left=node, op=token, right=self.factor())
+            node = self.term_prime(node)
+
+        elif token.type == DIV:
+            self.match(DIV)
+            node = BinOp(left=node, op=token, right=self.factor())
+            node = self.term_prime(node)
 
         return node
 
     def expression(self):
 
         node = self.term()
+        node = self.expression_prime(node)
 
-        while self.current_token.type in (PLUS, MINUS):
-            token = self.current_token
+        return node
 
-            if token.type == PLUS:
-                self.match(PLUS)
+    def expression_prime(self, node):
 
-            elif token.type == MINUS:
-                self.match(MINUS)
+        token = self.current_token
 
-            else:
-                self.error()
-                break
-
+        if token.type == PLUS:
+            self.match(PLUS)
             node = BinOp(left=node, op=token, right=self.term())
+            node = self.expression_prime(node)
+
+        elif token.type == MINUS:
+            self.match(MINUS)
+            node = BinOp(left=node, op=token, right=self.term())
+            node = self.expression_prime(node)
 
         return node
 
