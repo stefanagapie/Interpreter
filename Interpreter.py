@@ -499,7 +499,6 @@ def test_driver():
             print(BCOLORS.FAIL, "Test: <Failed> Input:", program_pkg[program],
                   "\n\t:: Expected:", program_pkg[expected], "\n\t::   Actual:", output, BCOLORS.ENDC)
             failed_tests += 1
-            # interpreter.showTreeHeirarchy(prog)
         else:
             print(BCOLORS.OKGREEN, "Test: <Passed> Input:", program_pkg[program], ":: Output:", output, BCOLORS.ENDC)
             passed_tests += 1
