@@ -446,6 +446,7 @@ def test_driver():
         {program: "eval = - - - - 5 + - 3;",            expected: "eval = 2"},
         {program: "eval = 5 - - - + - 3;",              expected: "eval = 8"},
         {program: "eval = 5 - - - + - (3 + 4) - +2;",   expected: "eval = 10"},
+        {program: "rate = 4 + 5; kite = 5; flight = rate + kite;",  expected: "rate = 9, kite = 5, flight = 14"}
     ]
 
     failed_tests = 0
@@ -462,11 +463,12 @@ def test_driver():
 
         output = interpreter.stringed_output()
         if str(output) != str(program_pkg[expected]):
-            print(BCOLORS.FAIL, "Test: <Failed> Input:", program_pkg, "Actual:", output, BCOLORS.ENDC)
+            print(BCOLORS.FAIL, "Test: <Failed> Input:", program_pkg[program],
+                  "\n\t:: Expected:", program_pkg[expected], "\n\t::   Actual:", output, BCOLORS.ENDC)
             failed_tests += 1
-            interpreter.showTreeHeirarchy(program)
+            interpreter.showTreeHeirarchy(prog)
         else:
-            print(BCOLORS.OKGREEN, "Test: <Passed> Input:", program_pkg[program], "Output:", output, BCOLORS.ENDC)
+            print(BCOLORS.OKGREEN, "Test: <Passed> Input:", program_pkg[program], ":: Output:", output, BCOLORS.ENDC)
             passed_tests += 1
 
     print(BCOLORS.HEADER, "\n\tSTATISTICS: Failed = "+str(failed_tests)+", Passed = "+str(passed_tests), BCOLORS.ENDC)
