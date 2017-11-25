@@ -37,6 +37,18 @@ class Num(AST):
     def __repr__(self):
         return self.__str__()
 
+
+class UnaryOp(AST):
+    def __init__(self, op, expr):
+        self.token = self.op = op
+        self.expr = expr
+
+    def __str__(self):
+        return 'UnaryOp({value})'.format(value=repr(self.token.value))
+
+    def __repr__(self):
+        return self.__str__()
+
 # Token types
 #
 # EOF (end-of-file) token is used to indicate that
@@ -154,6 +166,14 @@ class Interpreter(object):
             elif root.token.type == DIV:
                 return self.compute_AST(root.left) / self.compute_AST(root.right)
 
+        elif isinstance(root, UnaryOp):
+
+            if root.token.type == PLUS:
+                return +self.compute_AST(root.expr)
+
+            elif root.token.type == MINUS:
+                return -self.compute_AST(root.expr)
+
     def showTreeHeirarchy(self, root):
 
         def showTree(root, level):
@@ -168,6 +188,9 @@ class Interpreter(object):
             if isinstance(root, BinOp):
                 showTree(root.left, level + 1)
                 showTree(root.right, level + 1)
+
+            elif isinstance(root, UnaryOp):
+                showTree(root.expr, level + 1)
 
         showTree(root, 0)
 
@@ -188,7 +211,16 @@ class Parser(object):
     def factor(self):
 
         token = self.current_token
-        if token.type == INTEGER:
+
+        if token.type == PLUS:
+            self.match(PLUS)
+            return UnaryOp(token, self.factor())
+
+        elif token.type == MINUS:
+            self.match(MINUS)
+            return UnaryOp(token, self.factor())
+
+        elif token.type == INTEGER:
             self.match(INTEGER)
             return Num(token)
 
@@ -280,6 +312,12 @@ def test_driver():
         {program: "7 + 3 * (10 / (12 / (3 + 1) - 1))",  expected: "22"},
         {program: "7 + (((3 + 2)))",                    expected: "12"},
         {program: "7 + 3 * (10 / (12 / (3 + 1) - 1)) / (2 + 3) - 5 - 3 + (8)", expected: "10"},
+        {program: "- 3",    expected: "-3"},
+        {program: "+ 3",    expected: "3"},
+        {program: "- - - 5 + - 3",              expected: "-8"},
+        {program: "- - - - 5 + - 3",            expected: "2"},
+        {program: "5 - - - + - 3",              expected: "8"},
+        {program: "5 - - - + - (3 + 4) - +2",   expected: "10"},
     ]
 
     failed_tests = 0
