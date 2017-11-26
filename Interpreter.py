@@ -93,11 +93,11 @@ INTEGER, ID, ASSIGN, PLUS, MINUS, MUL, DIV, LPAREN, RPAREN, SEMI, EOF = \
 
 
 class Token(object):
-    def __init__(self, type, value=None):
-        # token type: INTEGER, PLUS, MINUS, MUL, DIV, or EOF
+    def __init__(self, type, value=None, line=None, column=None):
         self.type = type
-        # token value: non-negative integer value, '+', '-', '*', '/', or None
         self.value = value
+        self.line = line
+        self.column = column
 
     def __str__(self):
         return 'Token({type},{value})'.format(type=self.type, value=repr(self.value))
@@ -146,13 +146,12 @@ class Lexer(object):
                 line += 1
             elif type != 'SKIP':
                 val = mo.group(type)
-                self.tokens.append(Token(type, val))
+                self.tokens.append(Token(type, val, line, mo.start() - line_start))
 
             pos = mo.end()
             mo = self.get_token(input_program, pos)
         if pos != len(input_program):
             self._error()
-            # raise RuntimeError('Unexpected character %r on line %d' % (input_program[pos], line))
 
         if len(self.tokens) > 0:
             self.current_token_index = 0
@@ -446,8 +445,14 @@ def test_driver():
         {program: "rate = 4 + 5; kite = 5; flight = rate + kite;",  expected: "rate = 9, kite = 5, flight = 14"},
         {program: "x = 1; y = 2; z = ---(x+y)*(x+-y);", expected: "x = 1, y = 2, z = 3"},
         {program: "x = 0 y = x; z = ---(x+y);", expected: "error"},
-        {program: "x_2 = 0;", expected: "x_2 = 0"},
-        {program: "x = 001;", expected: "error"},
+        {program: "x_2 = 0;",       expected: "x_2 = 0"},
+        {program: "x = 001;",       expected: "error"},
+        {program: "_2 = 0;",        expected: "error"},
+        {program: "0x = 11;",       expected: "error"},
+        {program: "3 = 11;",        expected: "error"},
+        {program: "_ = 11;",        expected: "error"},
+        {program: "x123a = 21;",    expected: "x123a = 21"},
+
     ]
 
     failed_tests = 0
@@ -460,6 +465,7 @@ def test_driver():
         interpreter.reset()
 
         output = ""
+        prog = None
 
         try:
             prog = interpreter.evaluate_input(program_pkg[program])
