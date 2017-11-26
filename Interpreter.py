@@ -1,3 +1,9 @@
+# # # # # # # # # # # # # # # # # # #
+# Stefan Agapie                     #
+# Final Project -- Toy Interpreter  #
+# # # # # # # # # # # # # # # # # # #
+import re
+
 class BCOLORS:
     HEADER = '\033[95m'
     OKBLUE = '\033[94m'
@@ -12,10 +18,6 @@ class BCOLORS:
 class AST(object):
     def __repr__(self):
         return self.__str__()
-
-
-class NoOp(AST):
-    pass
 
 
 class Program(AST):
@@ -87,7 +89,7 @@ class UnaryOp(AST):
 # EOF (end-of-file) token is used to indicate that
 # there is no more input left for lexical analysis
 INTEGER, ID, ASSIGN, PLUS, MINUS, MUL, DIV, LPAREN, RPAREN, SEMI, EOF = \
-    ('INTEGER', 'ID', 'ASSIGN', 'PLUS', 'MINUS', 'MUL', 'DIV', '(', ')', 'SEMI', 'EOF')
+    ('INTEGER', 'ID', 'ASSIGN', 'PLUS', 'MINUS', 'MUL', 'DIV', 'LPAREN', 'RPAREN', 'SEMI', 'EOF')
 
 
 class Token(object):
@@ -106,95 +108,65 @@ class Token(object):
 
 class Lexer(object):
     def __init__(self):
-        self.text = ""
-        self.pos = 0
-        self.current_char = ""
+        self.current_token_index = None
+        self.tokens = []
+        self.token_specification = [
+            ('INTEGER', r'([0]|[1-9]\d*)'),                 # Integer or decimal number
+            ('ASSIGN',  r'='),                              # Assignment operator
+            ('SEMI',    r';'),                              # Statement terminator
+            ('LPAREN',  r'\('),                             # Open Parenthesis
+            ('RPAREN',  r'\)'),                             # Close Parenthesis
+            ('ID',      r'[A-Za-z]([0-9]|[A-Za-z]|\_)*'),   # Identifier
+            ('PLUS',    r'[+]'),                            # Arithmetic operators
+            ('MINUS',   r'[\-]'),                           # Arithmetic operators
+            ('MUL',     r'[*]'),                            # Arithmetic operators
+            ('DIV',     r'[\/]'),                           # Arithmetic operators
+            ('NEWLINE', r'\n'),                             # Line endings
+            ('SKIP',    r'[ \t]'),                          # Skip over spaces and tabs
+        ]
+        self.tok_regex = '|'.join('(?P<%s>%s)' % pair for pair in self.token_specification)
+        self.get_token = re.compile(self.tok_regex).match
 
     def reset(self):
-        self.text = ""
-        self.pos = 0
-        self.current_char = None
+        self.current_token_index = None
+        self.tokens = []
 
     def scanner_input(self, input_program):
-        self.text = input_program
-        self.pos = 0
-        self.current_char = self.text[self.pos]
+
+        self.tokens = []
+        pos = 0
+        line = 1
+        line_start = 0
+
+        mo = self.get_token(input_program)
+        while mo is not None:
+            type = mo.lastgroup
+            if type == 'NEWLINE':
+                line_start = pos
+                line += 1
+            elif type != 'SKIP':
+                val = mo.group(type)
+                self.tokens.append(Token(type, val))
+
+            pos = mo.end()
+            mo = self.get_token(input_program, pos)
+        if pos != len(input_program):
+            self._error()
+            # raise RuntimeError('Unexpected character %r on line %d' % (input_program[pos], line))
+
+        if len(self.tokens) > 0:
+            self.current_token_index = 0
 
     def _error(self):
         raise Exception('Error parsing input')
 
-    def _advance(self):
-        self.pos += 1
-        if self.pos > len(self.text) - 1:
-            self.current_char = None
-        else:
-            self.current_char = self.text[self.pos]
-
-    def _skip_whitespace(self):
-        while self.current_char is not None and self.current_char.isspace():
-            self._advance()
-
-    def _integer(self):
-        result = ''
-        while self.current_char is not None and self.current_char.isdigit():
-            result += self.current_char
-            self._advance()
-        return int(result)
-
-    def _identifier(self):
-        """Handle identifiers and reserved keywords"""
-        result = ''
-        while self.current_char is not None and self.current_char.isalnum():
-            result += self.current_char
-            self._advance()
-        return result
-
     def get_next_token(self):
-        while self.current_char is not None:
 
-            if self.current_char.isspace():
-                self._skip_whitespace()
+        while self.current_token_index is not None and self.current_token_index < len(self.tokens):
 
-            elif self.current_char.isdigit():
-                return Token(INTEGER, self._integer())
-
-            elif self.current_char.isalnum():
-                return Token(ID, self._identifier())
-
-            elif self.current_char == "=":
-                self._advance()
-                return Token(ASSIGN, "=")
-
-            elif self.current_char == ";":
-                self._advance()
-                return Token(SEMI, ";")
-
-            elif self.current_char == "+":
-                self._advance()
-                return Token(PLUS, "+")
-
-            elif self.current_char == "-":
-                self._advance()
-                return Token(MINUS, "-")
-
-            elif self.current_char == "*":
-                self._advance()
-                return Token(MUL, "*")
-
-            elif self.current_char == "/":
-                self._advance()
-                return Token(DIV, "/")
-
-            elif self.current_char == "(":
-                self._advance()
-                return Token(LPAREN, "(")
-
-            elif self.current_char == ")":
-                self._advance()
-                return Token(RPAREN, ")")
-
-            elif self.current_char == "":
-                self._advance()
+            token = self.tokens[self.current_token_index]
+            self.current_token_index += 1
+            return token
 
         return Token(EOF)
 
@@ -262,9 +234,9 @@ class Parser(object):
             return Num(token)
 
         elif token.type == LPAREN:
-            self._match('(')
+            self._match(LPAREN)
             node = self._expression()
-            self._match(')')
+            self._match(RPAREN)
             return node
 
         elif token.type == ID:
@@ -361,7 +333,7 @@ class Interpreter(object):
                 return identifier_value
 
         elif isinstance(root, Num):
-            return root.value
+            return int(root.value)
 
         elif isinstance(root, BinOp):
 
@@ -488,17 +460,20 @@ def test_driver():
         interpreter.reset()
 
         output = ""
+
         try:
-            interpreter.evaluate_input(program_pkg[program])
+            prog = interpreter.evaluate_input(program_pkg[program])
             output = interpreter.stringed_output()
         except:
-            print("Exceptional Code...")
-            continue
+            output = "error"
+            pass
 
         if str(output) != str(program_pkg[expected]):
             print(BCOLORS.FAIL, "Test: <Failed> Input:", program_pkg[program],
                   "\n\t:: Expected:", program_pkg[expected], "\n\t::   Actual:", output, BCOLORS.ENDC)
             failed_tests += 1
+            print(interpreter.lexer.tokens)
+            interpreter.showTreeHeirarchy(prog)
         else:
             print(BCOLORS.OKGREEN, "Test: <Passed> Input:", program_pkg[program], ":: Output:", output, BCOLORS.ENDC)
             passed_tests += 1
