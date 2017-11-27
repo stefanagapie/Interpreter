@@ -22,7 +22,7 @@ class InterpreterSyntaxError(Exception):
 
 class InterpreterUninitializedVariableError(Exception):
     def __init__(self, dErrorArguments):
-        Exception.__init__(self,"The variable {0} is uninitialized.".format(dErrorArguments))
+        Exception.__init__(self,"{0} is undefined.".format(dErrorArguments))
         self.dErrorArguments = dErrorArguments
 
 
@@ -467,12 +467,13 @@ def test_driver():
         {program: "3 = 11;",        expected: "syntax error"},
         {program: "_ = 11;",        expected: "syntax error"},
         {program: "x123a = 21;",    expected: "x123a = 21"},
-        {program: "x = y;",         expected: "uninitialized variable error"},
-        {program: "x = x;",         expected: "uninitialized variable error"},
-        {program: "x = y;",         expected: "uninitialized variable error"},
-        {program: "x = 56; y = x + z;",             expected: "uninitialized variable error"},
-        {program: "x = 56; y = (x + (z));",         expected: "uninitialized variable error"},
-        {program: "rate = 4; time = rate + speed;", expected: "uninitialized variable error"},
+        {program: "x = y;",         expected: "uninitialized variable error: 'y' is undefined."},
+        {program: "x = x;",         expected: "uninitialized variable error: 'x' is undefined."},
+        {program: "x = y;",         expected: "uninitialized variable error: 'y' is undefined."},
+        {program: "x = 56; y = x + z;",             expected: "uninitialized variable error: 'z' is undefined."},
+        {program: "x = 56; y = t + v;",             expected: "uninitialized variable error: 't' is undefined."},
+        {program: "x = 56; y = (x + (z));",         expected: "uninitialized variable error: 'z' is undefined."},
+        {program: "rate = 4; time = rate + speed;", expected: "uninitialized variable error: 'speed' is undefined."},
     ]
 
     failed_tests = 0
@@ -492,8 +493,8 @@ def test_driver():
             output = interpreter.stringed_output()
         except InterpreterSyntaxError:
             output = "syntax error"
-        except InterpreterUninitializedVariableError:
-            output = "uninitialized variable error"
+        except InterpreterUninitializedVariableError as err:
+            output = "uninitialized variable error: {0}".format(err)
         except:
             output = "unknown error"
 
@@ -550,8 +551,8 @@ def main():
                 output = interpreter.normal_output()
             except InterpreterSyntaxError:
                 output = "syntax error"
-            except InterpreterUninitializedVariableError:
-                output = "uninitialized variable error"
+            except InterpreterUninitializedVariableError as err:
+                output = "uninitialized variable error: {0}".format(err)
             except:
                 output = "unknown error"
 
