@@ -15,6 +15,17 @@ class BCOLORS:
     UNDERLINE = '\033[4m'
 
 
+class InterpreterSyntaxError(Exception):
+    def __init__(self):
+        Exception.__init__(self,"Syntax Error.")
+
+
+class InterpreterUninitializedVariableError(Exception):
+    def __init__(self, dErrorArguments):
+        Exception.__init__(self,"The variable {0} is uninitialized.".format(dErrorArguments))
+        self.dErrorArguments = dErrorArguments
+
+
 class AST(object):
     def __repr__(self):
         return self.__str__()
@@ -157,7 +168,7 @@ class Lexer(object):
             self.current_token_index = 0
 
     def _error(self):
-        raise Exception('Error parsing input')
+        raise InterpreterSyntaxError()
 
     def get_next_token(self):
 
@@ -195,10 +206,10 @@ class Parser(object):
             self.current_token = self.lexer.get_next_token()
             return token
         else:
-            self._error()
+            self._error_syntax()
 
-    def _error(self):
-        raise Exception('Error parsing input')
+    def _error_syntax(self):
+        raise InterpreterSyntaxError()
 
     def _statement(self):
 
@@ -242,7 +253,7 @@ class Parser(object):
             return self._identifier()
 
         else:
-            self._error()
+            self._error_syntax()
 
     def _term(self):
 
@@ -311,6 +322,9 @@ class Interpreter(object):
         self.parser.reset()
         self.symbol_table = {}
 
+    def _error_undefined_variable(self, data):
+        raise InterpreterUninitializedVariableError(data)
+
     def _evaluate_program(self, root):
 
         if isinstance(root, Program):
@@ -327,7 +341,7 @@ class Interpreter(object):
             variable_name = root.value
             identifier_value = self.symbol_table.get(variable_name)
             if identifier_value is None:
-                raise Exception(repr(variable_name))
+                self._error_undefined_variable(repr(variable_name))
             else:
                 return identifier_value
 
@@ -444,14 +458,21 @@ def test_driver():
         {program: "eval = 5 - - - + - (3 + 4) - +2;",   expected: "eval = 10"},
         {program: "rate = 4 + 5; kite = 5; flight = rate + kite;",  expected: "rate = 9, kite = 5, flight = 14"},
         {program: "x = 1; y = 2; z = ---(x+y)*(x+-y);", expected: "x = 1, y = 2, z = 3"},
-        {program: "x = 0 y = x; z = ---(x+y);", expected: "error"},
+        {program: "x = 0 y = x; z = ---(x+y);",     expected: "syntax error"},
+        {program: "x = 0; y = x; z = ---(x+y));",   expected: "syntax error"},
         {program: "x_2 = 0;",       expected: "x_2 = 0"},
-        {program: "x = 001;",       expected: "error"},
-        {program: "_2 = 0;",        expected: "error"},
-        {program: "0x = 11;",       expected: "error"},
-        {program: "3 = 11;",        expected: "error"},
-        {program: "_ = 11;",        expected: "error"},
+        {program: "x = 001;",       expected: "syntax error"},
+        {program: "_2 = 0;",        expected: "syntax error"},
+        {program: "0x = 11;",       expected: "syntax error"},
+        {program: "3 = 11;",        expected: "syntax error"},
+        {program: "_ = 11;",        expected: "syntax error"},
         {program: "x123a = 21;",    expected: "x123a = 21"},
+        {program: "x = y;",         expected: "uninitialized variable error"},
+        {program: "x = x;",         expected: "uninitialized variable error"},
+        {program: "x = y;",         expected: "uninitialized variable error"},
+        {program: "x = 56; y = x + z;",             expected: "uninitialized variable error"},
+        {program: "x = 56; y = (x + (z));",         expected: "uninitialized variable error"},
+        {program: "rate = 4; time = rate + speed;", expected: "uninitialized variable error"},
     ]
 
     failed_tests = 0
@@ -469,9 +490,12 @@ def test_driver():
         try:
             prog = interpreter.evaluate_input(program_pkg[program])
             output = interpreter.stringed_output()
+        except InterpreterSyntaxError:
+            output = "syntax error"
+        except InterpreterUninitializedVariableError:
+            output = "uninitialized variable error"
         except:
-            output = "error"
-            pass
+            output = "unknown error"
 
         if str(output) != str(program_pkg[expected]):
             print(BCOLORS.FAIL, "Test: <Failed> Input:", program_pkg[program],
@@ -519,12 +543,17 @@ def main():
 
         elif terminal == "test":
             test_driver()
+
         else:
             try:
                 interpreter.evaluate_input(terminal)
                 output = interpreter.normal_output()
+            except InterpreterSyntaxError:
+                output = "syntax error"
+            except InterpreterUninitializedVariableError:
+                output = "uninitialized variable error"
             except:
-                output = "error"
+                output = "unknown error"
 
         print(output)
 
