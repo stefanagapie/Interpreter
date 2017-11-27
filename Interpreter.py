@@ -452,7 +452,6 @@ def test_driver():
         {program: "3 = 11;",        expected: "error"},
         {program: "_ = 11;",        expected: "error"},
         {program: "x123a = 21;",    expected: "x123a = 21"},
-
     ]
 
     failed_tests = 0
@@ -490,9 +489,6 @@ def test_driver():
 
 def main():
 
-    # test_driver()
-    # return
-
     interpreter = Interpreter()
 
     while True:
@@ -520,6 +516,9 @@ def main():
                 output = interpreter.normal_output()
             except:
                 output = "error -- could not get symbols"
+
+        elif terminal == "test":
+            test_driver()
         else:
             try:
                 interpreter.evaluate_input(terminal)
