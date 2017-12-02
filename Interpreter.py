@@ -474,6 +474,7 @@ def test_driver():
         {program: "x = 56; y = t + v;",             expected: "uninitialized variable error: 't' is undefined."},
         {program: "x = 56; y = (x + (z));",         expected: "uninitialized variable error: 'z' is undefined."},
         {program: "rate = 4; time = rate + speed;", expected: "uninitialized variable error: 'speed' is undefined."},
+        {program: "\n rate = 4 + 5; \n kite = 5; \n flight = rate + kite; \n", expected: "rate = 9, kite = 5, flight = 14"},
     ]
 
     failed_tests = 0
